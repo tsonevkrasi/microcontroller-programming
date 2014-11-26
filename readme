@@ -97,7 +97,7 @@ Let's see the following code.
 	{	
 1		      if(portb.b1==1)			// if button pressed
 2          			 handleBT1();                	//callback function to handle button
-3      		if(e_bt1_a==1)
+3      		      if(e_bt1_a==1)
 4         		 	handleBT1eventA(); 		//one time calling function 
 5		      if(e_bt1_b==1)
 6         		 	_handleBT1eventB();  	//many times calling function
@@ -164,7 +164,7 @@ while(1)				//Event  Loop
 	{
 1		      if(portb.b1==1)			// if button pressed
 2          			 handleBT1();                	//callback function to handle button
-3      		if(e_bt1_a==1 && e_call==0)
+3      		      if(e_bt1_a==1 && e_call==0)
 4         		 	handleBT1eventA(); 		//one time calling function 
 5		      if(e_bt1_b==1)
 6         		 	_handleBT1eventB();  	//many times calling function

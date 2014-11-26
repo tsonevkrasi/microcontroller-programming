@@ -1,0 +1,271 @@
+Non blocking event driven programming for microcontrollers
+
+*I have borrow some terminology from Node.JS but the Idea I used over 20 year ago.
+
+	
+
+
+
+
+
+	1.Events,  Events Loop
+
+	Programming for MCU we usually wait for some event to happen and then we take some action for response .
+Those events could be internal or external for MCU or events(variables) we created. For example pressing 
+button(external event) or raising of some special internal bit of MCU showing changing of some statement 
+like timer expiration or comparator lever reached. So the first nut for  this type of programming is: 
+EVENT happen → ACTION taken. Or more specific speaking EVENT → CALLBACK Function. Like C code this may look like:
+	
+	if(event1==1)
+		callbackFunc1();	
+	if(event2==1)
+		callbackFunc2();	
+	if(event3==1)
+		callbackFunc3();	
+	-
+	-
+	-
+	if(eventN==1)
+		callbackFuncN();
+
+We don't need “else”operator because if there is no event happen we just skip callback function and check next event.
+If we put this in cycle it will looks like:
+
+while(1)
+{	if(event1==1)
+		callbackFunc1();		//one time executing function
+	if(event2==1)
+		callbackFunc2();	
+	if(event3==1)
+		_callbackFunc3();		//many times executing function	
+	-
+	-
+	-
+	if(eventN==1)
+		callbackFuncN();
+}
+
+This is the second nut in our programming scheme, EVENT LOOP.
+
+Our main program will look like this:
+
+
+#include statements
+-
+variable declarations
+-
+function declarations
+-
+some initialization functions here
+
+void main()		//main module
+{	
+	variable initialization
+	-
+	-
+	start up function execution
+	-
+	-
+	
+	while(1)
+	{	-      	//EVENT LOOP
+		-
+		-
+	}
+}
+
+
+
+All  Callback Functions from the event loop we put in #include modules.
+So when we start (power up or reset) the hardware it execute the main program code and enter in endless EVENT LOOP.
+Into this Event Loop we check the events all the time, and call Callback Functions if events happen.
+
+	
+
+
+
+	
+	2. Emit Events ,  Two types of Callback Functions, Flags
+
+Let's see the following code.
+
+	bit e_bt1_a=0;			//declare bit variable “event button 1 a”
+	bit e_bt1_b=0;			//declare bit variable “event button 1 b”
+	bit e_call=0;			
+
+	while(1)				//Event  Loop
+	{	
+1		      if(portb.b1==1)			// if button pressed
+2          			 handleBT1();                	//callback function to handle button
+3      		if(e_bt1_a==1)
+4         		 	handleBT1eventA(); 		//one time calling function 
+5		      if(e_bt1_b==1)
+6         		 	_handleBT1eventB();  	//many times calling function
+	}           
+
+
+and function representation:
+
+	void handleBT1()        		//handle button press
+	{   	//some code here
+7		e_bt1_a=1;             		//emit event BT 1_a
+8		e_bt1_b=1;             		//emit event BT 1_b 
+		//some code here   
+	}
+
+	void handleBT1eventA()		//ONE time 
+	{	//some code here
+13		e_bt1_a=0;
+	}
+
+	void _handleBT1eventB()		//MANY times
+	{	//some code here
+17		if(something)
+			e_bt1_b=0;
+	}
+	
+
+	In line 1 we check for hardware event, if 1 appear on port B bit 1 we call callback function. 
+But in line 3 we check Event which we created(EMIT) in handleBT1() function. In this case we need this
+event because when button is released the  hardware event will disappear. But if we EMIT(create) own 
+event it will stay until we clear it. Emit Events allow us to include those Events in EVENT LOOP and 
+appropriate Callback functions for them. Creating(Emit) Events is not very easy. Sometime instead of
+events you can use global variable or just set Flag(bit) variable. We have to think “do I need this 
+event” ,“will it improve and minimize my program”.  
+
+	In line 13 we clear the event, so the function handleBT1eventA() will be executed ONE time only.
+But the function _handleBT1eventB() will be executed MANY times until something happen to clear the
+event(line 17).
+I will explain later why Many times execution functions are important but the main reason is to write 
+NON blocking code for slow processes. 
+We have to clear the event at some point, otherwise the function will be invoked on every event loop. 
+We usually do this in the Callback function but sometime you could do this in another Callback  function.
+
+	How you see Event Loop contain only conditional operators “if” checking the events and Callback functions. 
+	There is no other code here. Do not put useless code in Event Loop, keep the “dirty job” for 
+	Callback functions. Actually in  the Event Loop you create the logic of the program.
+	
+	The difference between Flags and Events is that Events are followed by Callback function, they live 
+	together Event → Callback function.
+We set some Flag(usually bit variable) in some point of the program, then in other point we check that 
+flag. Flags are not followed by callback function, they just keep some condition.
+
+	For convenience I name  flag variables with “f_” ,  Events with “e_” and Many times functions with “_”.  
+	Ex.   f_time_left , f_myflag1,              e_time_left , e_myevent1 ,  _myManyTfunc() .
+
+
+	There is an big error in example  above maybe you notice. Until you press the button all three 
+	callback functions will be invoked many times because the speed of the microcontroller is many 
+	times faster then the human reactions, and because we cycle in Event Loop. For the first and
+	third callback functions this is not so important but for the second is critical because we 
+	need it to be executed only one time. So we just create new event e_call to solve this;
+
+while(1)				//Event  Loop
+	{
+1		      if(portb.b1==1)			// if button pressed
+2          			 handleBT1();                	//callback function to handle button
+3      		if(e_bt1_a==1 && e_call==0)
+4         		 	handleBT1eventA(); 		//one time calling function 
+5		      if(e_bt1_b==1)
+6         		 	_handleBT1eventB();  	//many times calling function
+	}   
+
+
+
+	void handleBT1()        		//handle button press
+	{   	//some code here
+7		e_bt1_a=1;             		//emit event BT 1_a
+8		e_bt1_b=1;             		//emit event BT 1_b 
+		//some code here   
+	}
+
+	void handleBT1eventA()		//ONE time 
+	{	//some code here
+13		e_bt1_a=0;
+14		e_call==1;
+	}
+
+
+But in line 13 clearing the e_bt1_a=0; is useless because on next event loop it will be raised again. 
+That's why you have to be very careful with event logic, when and where to create and when and where 
+to clear it. 
+
+
+	
+
+	
+	3. Events Loop VS Interrupts. Events Loop and NON BLOCKING programming.  Many times execution 
+	functions and non blocking
+
+	Traditional way of programming is to rise hardware interrupts to invoke interrupt functions. 
+	Programming on Event Loop actually you do not need Interrupts. On every loop you can scan 
+	input ports, special bit variables. hardware flags or other quantity you interested  when 
+	they has changed by some reason.  If you program is organized well you do not need interrupts 
+	to sense this. Organize well means that you program do not stack in some point to miss the 
+	hardware Events who will happen. Example is to make 100 ms time delay function . Until this
+	function counts 100 ms time delay many hardware events can happen and if you do not have 
+	interrupts on them you will miss them. Another example if you have a function with  very 
+	heavy calculation who will take a few sec, you will miss  hardware events  if you do not 
+	have interrupts. So the point here is to make you functions short, fast, not spending many 
+	processor time. That way your Event Loop will cycle fast every time and you will not miss 
+	hardware events. This is NON BLOCKING way of programming. Do Not Block Event Loop Cycle 
+	with time spending functions. Event Loop at very worst case will take 0.5-1 ms (at 16 kB 
+	program memory and 16 MHz speed). This means if all events(hardware and yours created) 
+	happened, which practically is impossible. Usually at the same time 2-4 events will happen,
+	which means that for 1 ms event loop will cycle 30-50 times. This means for every Event 
+	Loop you can sense almost every event.
+But , if there is some very fast processes event loop can't sense or another special task , 
+you can use Interrupts. Example is creating a software clock for real time. Here you must 
+use hardware timer and interrupt to count time units.  
+	 Remember Many times execution callback functions. We call them many times on every event 
+	 loop because they usually handle slow processes. Every time we enter this function ,we 
+	 do some small part of the task and go back to event loop until task is done. This way 
+	 you don't block Event Loop. Example, we have to sent a 100  bytes on RS232. After every
+	 byte sent must present few ms time delay because the speed of RS232 is very slow. So we 
+	 create callback function who send next byte ,start timer for few ms , and return to event 
+	 loop. Next time we check the timer pass and send next byte until all bytes are sent. This 
+	 way we do not block the event loop because we check the timer, if time pass send next byte 
+	 if not return to event loop. No Blocking. So programing this way you all the time have to 
+	 take care of non blocking.
+
+
+	4. Software Real Time clock and Software Timers
+
+	The last thing to make our system work is creating software real time clock and software 
+	timers module. Creating this module actually you don't need to use hardware timers available 
+	in the chip, excepting timer for real time clock.
+	We create Real time clock using hardware timer who make interrupts on every millisecond.
+	We start real time clock when we power up the hardware, so it count relative time not 
+	actually astronomic time. Then in variables “ms” , “sec” , “min” and “hours”  we start to 
+	heap the time from the  beginning(power up). The real time clock is not so precisely clock
+	because it depend of many factors of the chip but for our purpose it works just fine.
+	To create software timer we start the timer and in some point of the program(event loop)
+	we check whether the timer is reached necessary time delay we wont.  
+
+Ex.	
+	stime_BT = ms;		//Start the timer (in some callback function usually)
+
+	if(t_ms(stime_BT,200))	//Check  timer reached necessary time  (in some callback function usually)
+	{   	
+		some code here
+	{ 
+
+In the example above we start the timer saving the “ms” value in variable  “stime_BT”, so this is 
+the start time of  button pressed (stime_BT). Because on every millisecond the value of “ms” is 
+increased this fact allow us to check in function  t_ms(stime_BT,200) when the difference between  
+“stime_BT” and “ms” is reached 200 milliseconds. The same way we create software timers counting 
+seconds, minutes and hours. This way we can start many different timers and because we are in 
+Event Loop we can check them if they reach necessary times.
+
+
+	5 Connecting all elements 
+
+	Connecting all elements described above you can successfully program on microcontrollers. 
+	I give you full functional example who drive indication module from queue management system. 
+	This module receive information from main module on RS485, drive dynamically 3 digit indicator 
+	and produce two tonal frequency for loudspeaker. I use Mikroelektronika Mikro C,  but you can 
+	rewrite the code if you use another compiler. 
+
+
+
+

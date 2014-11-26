@@ -14,10 +14,11 @@ Non blocking event driven programming for microcontrollers
 	1.Events,  Events Loop
 
 	Programming for MCU we usually wait for some event to happen and then we take some action for response .
-Those events could be internal or external for MCU or events(variables) we created. For example pressing button(external event) 
-or raising of some special internal bit of MCU showing changing of some statement like timer expiration or comparator lever
-reached. So the first nut for  this type of programming is:  EVENT happen → ACTION taken. Or more specific speaking 
-EVENT → CALLBACK Function. Like C code this may look like:
+Those events could be internal or external for MCU or events(variables) we created. For example pressing 
+button(external event) or raising of some special internal bit of MCU showing changing of some statement like 
+timer expiration or comparator lever reached. So the first nut for  this type of programming is:  
+EVENT happen → ACTION taken. Or more specific 
+speaking EVENT → CALLBACK Function. Like C code this may look like:
 	
 	if(event1==1)
 		callbackFunc1();	
